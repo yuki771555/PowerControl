@@ -10,5 +10,5 @@ if not exist "%CSC%" (
   exit /b 1
 )
 
-"%CSC%" /nologo /target:winexe /out:"%~dp0PowerControl.exe" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll "%~dp0PowerControl.cs"
+"%CSC%" /nologo /target:winexe /win32manifest:"%~dp0PowerControl.exe.manifest" /out:"%~dp0PowerControl.exe" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll "%~dp0PowerControl.cs"
 exit /b %ERRORLEVEL%

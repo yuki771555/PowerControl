@@ -37,7 +37,7 @@ No more clicking through six separate settings in the Windows Settings app every
 ## Requirements
 
 - Windows 10 / 11
-- Administrator privileges (a UAC prompt appears at launch because `powercfg` changes the active power plan)
+- Administrator privileges (the native executable includes a `requireAdministrator` manifest because `powercfg` changes the active power plan)
 
 ## Usage
 
@@ -49,7 +49,7 @@ No more clicking through six separate settings in the Windows Settings app every
    ```
 
 3. Double-click `PowerControl.exe`
-4. Approve the UAC prompt, then the tray icon appears
+4. Approve the required UAC prompt, then the tray icon appears
 5. Right-click the icon and choose the preset you want
 
 On first launch, `presets.json` (preset definitions) and `state.json` (the most recently applied preset) are generated automatically.
@@ -65,7 +65,7 @@ This repository does not include a prebuilt `.exe`, because an unsigned executab
 You can still build the app locally:
 
 ```cmd
-%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /out:PowerControl.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll PowerControl.cs
+%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /win32manifest:PowerControl.exe.manifest /out:PowerControl.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll PowerControl.cs
 PowerControl.exe
 ```
 
@@ -132,6 +132,8 @@ On newer versions of Windows, these items are hidden by default in `powercfg /qu
 
 ```
 PowerControl.cs      Source for the native Windows tray app
+PowerControl.exe.manifest
+                     Requires administrator privileges at launch
 Build-PowerControl.bat
                      Builds PowerControl.exe with the .NET Framework C# compiler
 Sign-PowerControl.ps1
