@@ -71,6 +71,28 @@ PowerControl.exe
 
 For distribution to other Smart App Control protected devices, sign `PowerControl.exe` before publishing it.
 
+### Code Signing
+
+Install the Windows SDK so `signtool.exe` is available, then build and sign the app locally.
+
+Sign with a `.pfx` code-signing certificate:
+
+```powershell
+.\Build-PowerControl.bat
+.\Sign-PowerControl.ps1 -PfxPath C:\path\to\codesign.pfx
+```
+
+Sign with a certificate already installed in the Windows certificate store:
+
+```powershell
+.\Build-PowerControl.bat
+.\Sign-PowerControl.ps1 -CertificateThumbprint YOUR_CERT_THUMBPRINT
+```
+
+The signing script timestamps the signature with DigiCert's timestamp server by default and verifies the result with `signtool verify /pa /v`.
+
+Do not commit certificates, private keys, or passwords. This repository ignores common certificate file formats such as `.pfx`, `.p12`, `.cer`, `.crt`, `.pvk`, and `.spc`.
+
 ### Legacy PowerShell Version
 
 The legacy PowerShell version is still included. If Windows blocks it because the files were downloaded from the internet, unblock the files once and launch it again:
@@ -112,6 +134,8 @@ On newer versions of Windows, these items are hidden by default in `powercfg /qu
 PowerControl.cs      Source for the native Windows tray app
 Build-PowerControl.bat
                      Builds PowerControl.exe with the .NET Framework C# compiler
+Sign-PowerControl.ps1
+                     Signs and verifies PowerControl.exe with signtool.exe
 PowerControl.ps1     Legacy PowerShell version (tray app + WPF preset editor window)
 PowerControl.bat     Legacy launcher batch file (runs the .ps1 with -NoProfile / -STA / RemoteSigned)
 presets.json         Preset definitions (generated automatically on first launch)

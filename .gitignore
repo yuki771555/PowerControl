@@ -2,6 +2,12 @@
 presets.json
 state.json
 PowerControl.exe
+*.pfx
+*.p12
+*.cer
+*.crt
+*.pvk
+*.spc
 
 # Windows / editors
 Thumbs.db
