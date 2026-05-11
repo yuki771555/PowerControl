@@ -1,0 +1,10 @@
+# ユーザーごとに変わる実行時データ
+presets.json
+state.json
+
+# Windows / エディタ
+Thumbs.db
+Desktop.ini
+*.lnk
+.vscode/
+.idea/
