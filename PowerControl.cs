@@ -48,7 +48,7 @@ namespace PowerControl
 
             if (!IsAdministrator())
             {
-                RelaunchAsAdministrator();
+                MessageBox.Show(L.T("RunAsAdminRequired"), "PowerControl", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -76,17 +76,6 @@ namespace PowerControl
             WindowsIdentity identity = WindowsIdentity.GetCurrent();
             WindowsPrincipal principal = new WindowsPrincipal(identity);
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
-        }
-
-        private static void RelaunchAsAdministrator()
-        {
-            ProcessStartInfo startInfo = new ProcessStartInfo
-            {
-                FileName = Application.ExecutablePath,
-                UseShellExecute = true,
-                Verb = "runas"
-            };
-            Process.Start(startInfo);
         }
 
         private static PresetConfig GetDefaultPresets()
@@ -876,6 +865,7 @@ namespace PowerControl
             { "PowerSavingModeDescription", new[] { "Sleep for all actions (battery saving)", "すべてスリープにします（バッテリー節約）" } },
             { "powerSavingDescription", new[] { "Sleep for all actions (battery saving)", "すべてスリープにします（バッテリー節約）" } },
             { "FailedLoadPresets", new[] { "Failed to load presets.json. Restoring default presets.", "presets.json の読み込みに失敗しました。既定のプリセットに戻します。" } },
+            { "RunAsAdminRequired", new[] { "PowerControl must be started with administrator privileges.", "PowerControl は管理者権限で起動する必要があります。" } },
             { "CouldNotGetScheme", new[] { "Could not get the GUID of the active power plan.", "アクティブな電源プランの GUID を取得できませんでした。" } },
             { "InvalidActionValue", new[] { "Preset action values must be between 0 and 3.", "プリセットの動作値は 0 から 3 の間である必要があります。" } },
             { "ProcessFailed", new[] { "{0} failed with exit code {1}.", "{0} が終了コード {1} で失敗しました。" } },

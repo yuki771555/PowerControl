@@ -53,7 +53,7 @@ No more clicking through six separate settings in the Windows Settings app every
 4. Approve the required UAC prompt, then the tray icon appears
 5. Right-click the icon and choose the preset you want
 
-You can also run `PowerControl.bat`. It rebuilds `PowerControl.exe` first so stale local builds are replaced, then starts the native app. The UAC prompt comes from the native app's `requireAdministrator` manifest.
+You can also run `PowerControl.bat`. It rebuilds `PowerControl.exe` first so stale local builds are replaced, then starts the native app. The UAC prompt comes from the native app's `requireAdministrator` manifest; the batch file does not self-elevate.
 
 On first launch, `presets.json` (preset definitions) and `state.json` (the most recently applied preset) are generated automatically.
 
@@ -146,7 +146,7 @@ Build-PowerControl.bat
 Sign-PowerControl.ps1
                      Signs and verifies PowerControl.exe with signtool.exe
 PowerControl.ps1     Legacy PowerShell version (tray app + WPF preset editor window)
-PowerControl.bat     Launcher batch file (rebuilds and starts the native app; falls back to the legacy .ps1)
+PowerControl.bat     Launcher batch file (rebuilds and starts the native app)
 presets.json         Preset definitions (generated automatically on first launch)
 state.json           Most recently applied preset name and language (generated automatically)
 ```

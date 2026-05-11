@@ -14,4 +14,5 @@ if exist "%APP%" (
   exit /b 0
 )
 
-start "" powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File "%~dp0PowerControl.ps1"
+echo PowerControl.exe was not found and could not be built.
+exit /b 1
