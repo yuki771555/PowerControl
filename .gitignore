@@ -1,7 +1,6 @@
 # Per-user runtime data
 presets.json
 state.json
-PowerControl.exe
 *.pfx
 *.p12
 *.cer

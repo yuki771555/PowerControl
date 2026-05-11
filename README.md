@@ -43,15 +43,9 @@ No more clicking through six separate settings in the Windows Settings app every
 ## Usage
 
 1. Download this repository as a ZIP file or clone it with `git clone`
-2. Build `PowerControl.exe` locally:
-
-   ```cmd
-   Build-PowerControl.bat
-   ```
-
-3. Double-click `PowerControl.exe`
-4. Approve the required UAC prompt, then the tray icon appears
-5. Right-click the icon and choose the preset you want
+2. Double-click `PowerControl.exe`
+3. Approve the required UAC prompt, then the tray icon appears
+4. Right-click the icon and choose the preset you want
 
 You can also run `PowerControl.bat`. It rebuilds `PowerControl.exe` first so stale local builds are replaced, then starts the native app. The UAC prompt comes from the native app's `requireAdministrator` manifest; the batch file does not self-elevate.
 
@@ -63,13 +57,11 @@ Open **Language** from the tray menu and choose **English** or **日本語**. Th
 
 ### Smart App Control
 
-PowerControl is currently unsigned. On Windows 11 systems with Smart App Control enabled, Windows may block unsigned or low-reputation apps even when they are harmless.
+PowerControl includes a prebuilt `PowerControl.exe`, but it is currently unsigned. On Windows 11 systems with Smart App Control enabled, Windows may block unsigned or low-reputation apps even when they are harmless.
 
 If Smart App Control blocks `PowerControl.exe`, the reliable fix is to sign it with an RSA code-signing certificate from a trusted provider, or with Microsoft's Trusted Signing service. A self-signed certificate is useful for testing, but it is not a dependable Smart App Control distribution solution.
 
-This repository does not include a prebuilt `.exe`, because an unsigned executable downloaded from GitHub is likely to be blocked by Smart App Control.
-
-You can still build the app locally:
+If that happens, you can rebuild the app locally:
 
 ```cmd
 %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /win32manifest:PowerControl.exe.manifest /out:PowerControl.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll PowerControl.cs
@@ -138,6 +130,7 @@ On newer versions of Windows, these items are hidden by default in `powercfg /qu
 ## File Layout
 
 ```
+PowerControl.exe     Prebuilt native Windows tray app
 PowerControl.cs      Source for the native Windows tray app
 PowerControl.exe.manifest
                      Requires administrator privileges at launch
