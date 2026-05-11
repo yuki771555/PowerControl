@@ -42,29 +42,36 @@ No more clicking through six separate settings in the Windows Settings app every
 ## Usage
 
 1. Download this repository as a ZIP file or clone it with `git clone`
-2. Double-click `PowerControl.exe`
-3. Approve the UAC prompt, then the tray icon appears
-4. Right-click the icon and choose the preset you want
+2. Build `PowerControl.exe` locally:
+
+   ```cmd
+   Build-PowerControl.bat
+   ```
+
+3. Double-click `PowerControl.exe`
+4. Approve the UAC prompt, then the tray icon appears
+5. Right-click the icon and choose the preset you want
 
 On first launch, `presets.json` (preset definitions) and `state.json` (the most recently applied preset) are generated automatically.
 
-### If Windows Blocks the Script
+### Smart App Control
 
-PowerControl now includes a native Windows executable, so normal use does not require launching a `.ps1` script.
+PowerControl is currently unsigned. On Windows 11 systems with Smart App Control enabled, Windows may block unsigned or low-reputation apps even when they are harmless.
 
-If Smart App Control still blocks a downloaded `PowerControl.exe`, build the executable locally from source and run the locally built file:
+If Smart App Control blocks `PowerControl.exe`, the reliable fix is to sign it with an RSA code-signing certificate from a trusted provider, or with Microsoft's Trusted Signing service. A self-signed certificate is useful for testing, but it is not a dependable Smart App Control distribution solution.
 
-```cmd
-Build-PowerControl.bat
-PowerControl.exe
-```
+This repository does not include a prebuilt `.exe`, because an unsigned executable downloaded from GitHub is likely to be blocked by Smart App Control.
 
-If the build batch file is also blocked, run the compiler directly from Command Prompt:
+You can still build the app locally:
 
 ```cmd
 %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /out:PowerControl.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll PowerControl.cs
 PowerControl.exe
 ```
+
+For distribution to other Smart App Control protected devices, sign `PowerControl.exe` before publishing it.
+
+### Legacy PowerShell Version
 
 The legacy PowerShell version is still included. If Windows blocks it because the files were downloaded from the internet, unblock the files once and launch it again:
 
@@ -102,7 +109,6 @@ On newer versions of Windows, these items are hidden by default in `powercfg /qu
 ## File Layout
 
 ```
-PowerControl.exe     Native Windows tray app
 PowerControl.cs      Source for the native Windows tray app
 Build-PowerControl.bat
                      Builds PowerControl.exe with the .NET Framework C# compiler

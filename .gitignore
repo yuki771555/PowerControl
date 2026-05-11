@@ -1,6 +1,7 @@
 # Per-user runtime data
 presets.json
 state.json
+PowerControl.exe
 
 # Windows / editors
 Thumbs.db
