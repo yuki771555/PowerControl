@@ -1,0 +1,52 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build PowerControl.exe
+        shell: cmd
+        run: |
+          call Build-PowerControl.bat
+          if errorlevel 1 exit /b %ERRORLEVEL%
+
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path PowerControl.exe)) { throw 'PowerControl.exe was not produced.' }
+          $info = Get-Item PowerControl.exe
+          Write-Host "Built $($info.Name) ($([math]::Round($info.Length / 1KB, 1)) KB)"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PowerControl-${{ github.sha }}
+          path: |
+            PowerControl.exe
+            PowerControl.ico
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            PowerControl.exe
+            PowerControl.ico
+          generate_release_notes: true
+          draft: false
+          prerelease: false
