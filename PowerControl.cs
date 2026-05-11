@@ -126,7 +126,7 @@ namespace PowerControl
 
             try
             {
-                return LoadJson<PresetConfig>(PresetsPath);
+                return LoadPresetConfig(PresetsPath);
             }
             catch (Exception ex)
             {
@@ -210,6 +210,51 @@ namespace PowerControl
             {
                 DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(T));
                 return (T)serializer.ReadObject(stream);
+            }
+        }
+
+        private static PresetConfig LoadPresetConfig(string path)
+        {
+            string json = File.ReadAllText(path, Encoding.UTF8).TrimStart('\uFEFF', ' ', '\t', '\r', '\n');
+            if (json.StartsWith("[", StringComparison.Ordinal))
+            {
+                json = "{\"presets\":" + json + "}";
+            }
+
+            using (MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
+            {
+                DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(PresetConfig));
+                PresetConfig config = (PresetConfig)serializer.ReadObject(stream);
+                NormalizePresetConfig(config);
+                return config;
+            }
+        }
+
+        private static void NormalizePresetConfig(PresetConfig config)
+        {
+            if (config == null || config.presets == null || config.presets.Count == 0)
+            {
+                throw new InvalidOperationException("No presets were found.");
+            }
+
+            foreach (Preset preset in config.presets)
+            {
+                if (preset.power == null)
+                {
+                    preset.power = new ActionPair();
+                }
+                if (preset.sleep == null)
+                {
+                    preset.sleep = new ActionPair();
+                }
+                if (preset.lid == null)
+                {
+                    preset.lid = new ActionPair();
+                }
+                if (string.IsNullOrWhiteSpace(preset.name))
+                {
+                    preset.name = L.T("NewPreset");
+                }
             }
         }
 
