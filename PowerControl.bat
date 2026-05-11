@@ -1,6 +1,12 @@
 @echo off
 setlocal
 
+net session >nul 2>&1
+if not "%ERRORLEVEL%"=="0" (
+  powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+  exit /b
+)
+
 set "APP=%~dp0PowerControl.exe"
 set "BUILD=%~dp0Build-PowerControl.bat"
 
