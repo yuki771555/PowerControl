@@ -44,10 +44,10 @@ function Get-DefaultPresets {
         presets = @(
             [PSCustomObject]@{
                 name        = '通常モード'
-                description = '電源/スリープボタンでスリープ、カバーは何もしない'
+                description = '電源/スリープボタン・カバーを閉じると全てスリープ'
                 power = [PSCustomObject]@{ ac = 1; dc = 1 }
                 sleep = [PSCustomObject]@{ ac = 1; dc = 1 }
-                lid   = [PSCustomObject]@{ ac = 0; dc = 0 }
+                lid   = [PSCustomObject]@{ ac = 1; dc = 1 }
             },
             [PSCustomObject]@{
                 name        = '作業中モード'
