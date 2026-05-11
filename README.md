@@ -1,85 +1,85 @@
 # PowerControl
 
-Windows の **「カバー、電源とスリープ ボタン コントロール」** 設定を、タスクトレイから 1 クリックで切り替える PowerShell 製ユーティリティ。
+A PowerShell utility that lets you switch Windows **"Lid, power and sleep button controls"** from the task tray with a single click.
 
-## こんな人に便利
+## Who This Is For
 
-### Claude Code / Codex を「移動中も動かしっぱなし」で使いたい人
+### People who want Claude Code / Codex to keep running while they move around
 
-Claude Code / OpenAI Codex などの AI コーディングエージェントは、長いタスクだと数分〜数十分かけて思考・コード生成・テスト実行を続けます。
-そんな最中に **ノート PC のカバーを閉じたらスリープしてエージェントの作業が止まった…** という事故は致命的です。
+AI coding agents such as Claude Code and OpenAI Codex can spend several minutes, or sometimes tens of minutes, thinking, generating code, and running tests on longer tasks.
+If your laptop goes to sleep because you closed the lid in the middle of that work, the agent stops too.
 
-このアプリを使えば:
+With this app:
 
-- **出発前**: トレイから **「作業中モード」** をワンクリック → カバーを閉じてもスリープしない
-- **電車・カフェに移動** → カバンの中で Claude Code / Codex がタスクを継続実行
-- **到着したら**: カバーを開いて続きを確認、終わったら **「通常モード」** に戻すだけ
+- **Before leaving**: choose **"Work Mode"** from the tray with one click, so closing the lid does not put the PC to sleep
+- **While commuting or moving to a cafe**: Claude Code / Codex keeps working in your bag
+- **When you arrive**: open the lid, check the result, and switch back to **"Normal Mode"** when you are done
 
-Windows 設定アプリで毎回 6 項目をポチポチ変える手間がゼロになります。
+No more clicking through six separate settings in the Windows Settings app every time.
 
-### その他のユースケース
+### Other Use Cases
 
-- プレゼン中・録画中にうっかりスリープを防ぐ
-- バッテリー駆動時だけ厳しい省電力にしたい
-- 来客対応で席を離れる間だけ画面を消したいが PC は止めたくない
+- Prevent accidental sleep during presentations or recordings
+- Use stricter power saving only when running on battery
+- Turn off the display while stepping away without stopping the PC
 
-## 機能
+## Features
 
-- タスクトレイ常駐、右クリック (または左クリック) で即時切替
-- 既定プリセット 3 種類 (**通常モード / 作業中モード / 省電力モード**) + 任意で追加・編集・削除
-- 1 つのプリセットで以下 6 項目を一括設定
-  - 電源ボタンを押すと…（AC / バッテリー）
-  - スリープボタンを押すと…（AC / バッテリー）
-  - カバーを閉じると…（AC / バッテリー）
-  - それぞれ「何もしない / スリープ / 休止状態 / シャットダウン」から選択
-- 「スタートアップに登録」をオンにすると、次回ログオン以降は UAC プロンプトなしで自動起動 (タスクスケジューラ + 最上位権限)
+- Runs in the task tray and switches modes instantly via right-click or left-click
+- Includes three default presets (**Normal Mode / Work Mode / Power Saving Mode**) and supports adding, editing, and deleting custom presets
+- Each preset controls the following six settings at once:
+  - What happens when the power button is pressed (AC / battery)
+  - What happens when the sleep button is pressed (AC / battery)
+  - What happens when the lid is closed (AC / battery)
+  - Each setting can be set to "Do nothing / Sleep / Hibernate / Shut down"
+- When **"Register for startup"** is enabled, the app starts automatically on future logons without a UAC prompt (Task Scheduler + highest privileges)
 
-## 動作要件
+## Requirements
 
 - Windows 10 / 11
-- Windows PowerShell 5.1 (Windows 標準で含まれる)
-- 管理者権限 (`powercfg` で電源プランを変更するため、起動時に UAC プロンプトが出ます)
+- Windows PowerShell 5.1 (included with Windows)
+- Administrator privileges (a UAC prompt appears at launch because `powercfg` changes the active power plan)
 
-## 使い方
+## Usage
 
-1. このリポジトリを ZIP でダウンロードするか `git clone` する
-2. `PowerControl.bat` をダブルクリック
-3. UAC を承認 → タスクトレイにアイコンが現れる
-4. アイコンを右クリック → 好きなプリセットを選択
+1. Download this repository as a ZIP file or clone it with `git clone`
+2. Double-click `PowerControl.bat`
+3. Approve the UAC prompt, then the tray icon appears
+4. Right-click the icon and choose the preset you want
 
-初回起動時に `presets.json` (プリセット定義) と `state.json` (直近適用プリセット記録) が自動生成されます。
+On first launch, `presets.json` (preset definitions) and `state.json` (the most recently applied preset) are generated automatically.
 
-### プリセットのカスタマイズ
+### Customizing Presets
 
-トレイメニュー → **「プリセット設定...」** から GUI で編集できます。Windows の設定アプリと同じレイアウト・同じ選択肢なので直感的です。
+Open **"Preset settings..."** from the tray menu to edit presets in the GUI. The layout and choices mirror the Windows Settings app, so it should feel familiar.
 
-### 自動起動
+### Auto Start
 
-トレイメニュー → **「スタートアップに登録」** をクリックすると、Windows サインオン時に自動起動するタスクをタスクスケジューラに登録します。`RunLevel=Highest` で登録するので、起動時に UAC プロンプトが出ません。解除も同じメニューから。
+Click **"Register for startup"** in the tray menu to register a Task Scheduler task that starts the app automatically when you sign in to Windows. It is registered with `RunLevel=Highest`, so no UAC prompt appears at startup. You can disable it from the same menu.
 
-## 仕組み
+## How It Works
 
-`powercfg.exe` を内部で呼び、現在アクティブな電源プランの SUB_BUTTONS サブグループ配下にある以下 3 つの GUID 設定を AC / DC それぞれに書き換えています。
+Internally, the app calls `powercfg.exe` and updates the following three GUID settings under the SUB_BUTTONS subgroup of the currently active power plan, for both AC and DC power.
 
-| 設定 | GUID |
+| Setting | GUID |
 |---|---|
-| 電源ボタン (PBUTTONACTION) | `7648efa3-dd9c-4e3e-b566-50f929386280` |
-| スリープボタン (SBUTTONACTION) | `96996bc0-ad50-47ec-923b-6f41874dd9eb` |
-| カバーを閉じる (LIDACTION) | `5ca83367-6e45-459f-a27b-476b1d01c936` |
+| Power button (PBUTTONACTION) | `7648efa3-dd9c-4e3e-b566-50f929386280` |
+| Sleep button (SBUTTONACTION) | `96996bc0-ad50-47ec-923b-6f41874dd9eb` |
+| Lid close action (LIDACTION) | `5ca83367-6e45-459f-a27b-476b1d01c936` |
 
-値は `0=何もしない / 1=スリープ / 2=休止状態 / 3=シャットダウン`。
+Values are `0=Do nothing / 1=Sleep / 2=Hibernate / 3=Shut down`.
 
-新しい Windows ではこれらの項目は `powercfg /query` で既定では非表示ですが、GUID 指定での `/setacvalueindex` / `/setdcvalueindex` は非表示状態でも動作します。
+On newer versions of Windows, these items are hidden by default in `powercfg /query`, but `/setacvalueindex` and `/setdcvalueindex` still work when the GUIDs are specified directly.
 
-## ファイル構成
+## File Layout
 
 ```
-PowerControl.ps1     メインスクリプト (トレイ + WPF プリセット編集ウィンドウ)
-PowerControl.bat     起動用バッチ (-STA / Hidden で .ps1 を呼ぶ)
-presets.json         プリセット定義 (初回起動時に自動生成)
-state.json           直近に適用したプリセット名 (自動生成)
+PowerControl.ps1     Main script (tray app + WPF preset editor window)
+PowerControl.bat     Launcher batch file (runs the .ps1 with -STA / Hidden)
+presets.json         Preset definitions (generated automatically on first launch)
+state.json           Most recently applied preset name (generated automatically)
 ```
 
-## ライセンス
+## License
 
 MIT
