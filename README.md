@@ -26,6 +26,7 @@ No more clicking through six separate settings in the Windows Settings app every
 ## Features
 
 - Runs in the task tray and switches modes instantly via right-click or left-click
+- Switches the app UI between English and Japanese from the tray menu
 - Includes three default presets (**Normal Mode / Work Mode / Power Saving Mode**) and supports adding, editing, and deleting custom presets
 - Each preset controls the following six settings at once:
   - What happens when the power button is pressed (AC / battery)
@@ -53,6 +54,10 @@ No more clicking through six separate settings in the Windows Settings app every
 5. Right-click the icon and choose the preset you want
 
 On first launch, `presets.json` (preset definitions) and `state.json` (the most recently applied preset) are generated automatically.
+
+### Language
+
+Open **Language** from the tray menu and choose **English** or **日本語**. The selected language is saved in `state.json`.
 
 ### Smart App Control
 
@@ -141,7 +146,7 @@ Sign-PowerControl.ps1
 PowerControl.ps1     Legacy PowerShell version (tray app + WPF preset editor window)
 PowerControl.bat     Legacy launcher batch file (runs the .ps1 with -NoProfile / -STA / RemoteSigned)
 presets.json         Preset definitions (generated automatically on first launch)
-state.json           Most recently applied preset name (generated automatically)
+state.json           Most recently applied preset name and language (generated automatically)
 ```
 
 ## License
