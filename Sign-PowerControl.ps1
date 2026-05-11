@@ -45,8 +45,9 @@ function Find-SignTool {
 
     $kitsRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
     if (Test-Path -LiteralPath $kitsRoot) {
+        $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
         $candidate = Get-ChildItem -LiteralPath $kitsRoot -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
-            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Where-Object { $_.FullName -match ('\\' + [regex]::Escape($arch) + '\\signtool\.exe$') } |
             Sort-Object FullName -Descending |
             Select-Object -First 1
         if ($candidate) {
@@ -89,7 +90,7 @@ if (-not (Test-Path -LiteralPath $ExePath)) {
 $resolvedExe = (Resolve-Path -LiteralPath $ExePath).Path
 $signtool = Find-SignTool -ExplicitPath $SignToolPath
 
-$args = @(
+$signArgs = @(
     'sign',
     '/fd', 'SHA256',
     '/tr', $TimestampUrl,
@@ -97,7 +98,7 @@ $args = @(
 )
 
 if ($PSCmdlet.ParameterSetName -eq 'Store') {
-    $args += @('/sha1', $CertificateThumbprint)
+    $signArgs += @('/sha1', $CertificateThumbprint)
 }
 else {
     if (-not $PfxPath) {
@@ -110,14 +111,17 @@ else {
         $PfxPassword = Read-Host -Prompt 'PFX password' -AsSecureString
     }
 
+    # The PFX password is briefly visible in signtool.exe's command line. Prefer -CertificateThumbprint
+    # when the certificate is already installed in the Windows certificate store.
+    Write-Warning 'PFX password is passed as a command-line argument to signtool.exe. Consider using -CertificateThumbprint instead.'
     $plainPassword = Convert-SecureStringToPlainText -SecureString $PfxPassword
-    $args += @('/f', (Resolve-Path -LiteralPath $PfxPath).Path, '/p', $plainPassword)
+    $signArgs += @('/f', (Resolve-Path -LiteralPath $PfxPath).Path, '/p', $plainPassword)
 }
 
-$args += $resolvedExe
+$signArgs += $resolvedExe
 
 Write-Host "Signing $resolvedExe"
-& $signtool @args
+& $signtool @signArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Signing failed with exit code $LASTEXITCODE."
 }

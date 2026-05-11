@@ -13,6 +13,11 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     exit
 }
 
+# ----- Single instance guard -----
+$createdNew = $false
+$Script:SingleInstanceMutex = New-Object System.Threading.Mutex($true, 'Global\PowerControl_SingleInstance_2A7C', [ref]$createdNew)
+if (-not $createdNew) { exit }
+
 # ----- Assemblies -----
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
@@ -99,11 +104,28 @@ function Save-State($obj) {
 }
 
 # ----- powercfg logic -----
+$Script:PowerCfg = Join-Path ([Environment]::GetFolderPath('System')) 'powercfg.exe'
+
+function Invoke-PowerCfg {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
+    $output = & $Script:PowerCfg @Arguments 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "powercfg.exe failed (exit $LASTEXITCODE): $($output -join "`n")"
+    }
+    return $output
+}
+
 function Get-ActiveSchemeGuid {
-    $out = & powercfg.exe /getactivescheme 2>&1
+    $out = Invoke-PowerCfg /getactivescheme
     $match = [regex]::Match([string]::Join("`n", $out), '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})')
     if ($match.Success) { return $match.Groups[1].Value }
     throw 'Could not get the GUID of the active power plan.'
+}
+
+function Test-ActionValue([int]$value) {
+    if ($value -lt 0 -or $value -gt 3) {
+        throw "Preset action values must be between 0 and 3 (got $value)."
+    }
 }
 
 function Apply-Preset($preset) {
@@ -114,10 +136,12 @@ function Apply-Preset($preset) {
         @{ guid = $Script:GUID_LID;   ac = [int]$preset.lid.ac;   dc = [int]$preset.lid.dc }
     )
     foreach ($p in $pairs) {
-        & powercfg.exe /setacvalueindex $scheme $Script:SUB_BUTTONS $p.guid $p.ac | Out-Null
-        & powercfg.exe /setdcvalueindex $scheme $Script:SUB_BUTTONS $p.guid $p.dc | Out-Null
+        Test-ActionValue $p.ac
+        Test-ActionValue $p.dc
+        Invoke-PowerCfg /setacvalueindex $scheme $Script:SUB_BUTTONS $p.guid $p.ac | Out-Null
+        Invoke-PowerCfg /setdcvalueindex $scheme $Script:SUB_BUTTONS $p.guid $p.dc | Out-Null
     }
-    & powercfg.exe /setactive $scheme | Out-Null
+    Invoke-PowerCfg /setactive $scheme | Out-Null
 
     $state = Load-State
     $state | Add-Member -NotePropertyName lastPreset -NotePropertyValue $preset.name -Force
@@ -133,8 +157,9 @@ function Test-AutoStart {
 }
 
 function Enable-AutoStart {
-    $batPath = Join-Path $Script:ScriptDir 'PowerControl.bat'
-    $action = New-ScheduledTaskAction -Execute $batPath
+    $powershell = (Get-Command powershell.exe -ErrorAction Stop).Source
+    $argument = '-NoProfile -STA -ExecutionPolicy RemoteSigned -File "{0}"' -f $PSCommandPath
+    $action = New-ScheduledTaskAction -Execute $powershell -Argument $argument
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
