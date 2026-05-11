@@ -1,8 +1,8 @@
-# ユーザーごとに変わる実行時データ
+# Per-user runtime data
 presets.json
 state.json
 
-# Windows / エディタ
+# Windows / editors
 Thumbs.db
 Desktop.ini
 *.lnk
