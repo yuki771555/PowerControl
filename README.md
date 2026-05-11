@@ -131,9 +131,11 @@ On newer versions of Windows, these items are hidden by default in `powercfg /qu
 
 ```
 PowerControl.exe     Prebuilt native Windows tray app
+PowerControl.ico     App icon embedded into PowerControl.exe
 PowerControl.cs      Source for the native Windows tray app
 PowerControl.exe.manifest
                      Requires administrator privileges at launch
+Build-Icon.ps1       Generates PowerControl.ico
 Build-PowerControl.bat
                      Builds PowerControl.exe with the .NET Framework C# compiler
 Sign-PowerControl.ps1

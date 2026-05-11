@@ -57,7 +57,7 @@ namespace PowerControl
 
             NotifyIcon = new NotifyIcon
             {
-                Icon = SystemIcons.Application,
+                Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application,
                 Text = "PowerControl",
                 Visible = true
             };
@@ -605,6 +605,7 @@ namespace PowerControl
         private void InitializeComponent()
         {
             Text = L.T("SettingsTitle");
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             StartPosition = FormStartPosition.CenterScreen;
             Width = 720;
             Height = 560;
