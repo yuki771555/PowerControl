@@ -1,10 +1,10 @@
 ﻿#Requires -Version 5.1
 <#
 PowerControl.ps1
-タスクトレイ常駐型「電源ボタン / スリープボタン / カバー」動作切替アプリ
+Task tray app for switching power button, sleep button, and lid close actions
 #>
 
-# ----- 自己昇格 (管理者権限) -----
+# ----- Self elevation (administrator privileges) -----
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -13,24 +13,24 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     exit
 }
 
-# ----- アセンブリ -----
+# ----- Assemblies -----
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# ----- 定数 -----
+# ----- Constants -----
 $Script:SUB_BUTTONS = '4f971e89-eebd-4455-a8de-9e59040e7347'
-$Script:GUID_POWER  = '7648efa3-dd9c-4e3e-b566-50f929386280'  # 電源ボタン
-$Script:GUID_SLEEP  = '96996bc0-ad50-47ec-923b-6f41874dd9eb'  # スリープボタン
-$Script:GUID_LID    = '5ca83367-6e45-459f-a27b-476b1d01c936'  # カバーを閉じる
+$Script:GUID_POWER  = '7648efa3-dd9c-4e3e-b566-50f929386280'  # Power button
+$Script:GUID_SLEEP  = '96996bc0-ad50-47ec-923b-6f41874dd9eb'  # Sleep button
+$Script:GUID_LID    = '5ca83367-6e45-459f-a27b-476b1d01c936'  # Lid close
 
 $Script:ACTION_NAMES = @{
-    0 = '何もしない'
-    1 = 'スリープ'
-    2 = '休止状態'
-    3 = 'シャットダウン'
+    0 = 'Do nothing'
+    1 = 'Sleep'
+    2 = 'Hibernate'
+    3 = 'Shut down'
 }
 
 $Script:ScriptDir   = Split-Path -Parent $PSCommandPath
@@ -38,27 +38,27 @@ $Script:PresetsPath = Join-Path $Script:ScriptDir 'presets.json'
 $Script:StatePath   = Join-Path $Script:ScriptDir 'state.json'
 $Script:TaskName    = 'PowerControlAutoStart'
 
-# ----- プリセット読み書き -----
+# ----- Preset loading and saving -----
 function Get-DefaultPresets {
     [PSCustomObject]@{
         presets = @(
             [PSCustomObject]@{
-                name        = '通常モード'
-                description = '電源/スリープボタン・カバーを閉じると全てスリープ'
+                name        = 'Normal Mode'
+                description = 'Power button, sleep button, and lid close all put the PC to sleep'
                 power = [PSCustomObject]@{ ac = 1; dc = 1 }
                 sleep = [PSCustomObject]@{ ac = 1; dc = 1 }
                 lid   = [PSCustomObject]@{ ac = 1; dc = 1 }
             },
             [PSCustomObject]@{
-                name        = '作業中モード'
-                description = '全部「何もしない」（プレゼン・長時間作業向け）'
+                name        = 'Work Mode'
+                description = 'Do nothing for all actions (for presentations and long-running work)'
                 power = [PSCustomObject]@{ ac = 0; dc = 0 }
                 sleep = [PSCustomObject]@{ ac = 0; dc = 0 }
                 lid   = [PSCustomObject]@{ ac = 0; dc = 0 }
             },
             [PSCustomObject]@{
-                name        = '省電力モード'
-                description = '全部スリープ（バッテリー節約）'
+                name        = 'Power Saving Mode'
+                description = 'Sleep for all actions (battery saving)'
                 power = [PSCustomObject]@{ ac = 1; dc = 1 }
                 sleep = [PSCustomObject]@{ ac = 1; dc = 1 }
                 lid   = [PSCustomObject]@{ ac = 1; dc = 1 }
@@ -76,7 +76,7 @@ function Load-Presets {
     try {
         return (Get-Content -LiteralPath $Script:PresetsPath -Raw -Encoding UTF8 | ConvertFrom-Json)
     } catch {
-        [System.Windows.Forms.MessageBox]::Show("presets.json の読み込みに失敗しました。既定値に戻します。`n$_", 'PowerControl', 'OK', 'Warning') | Out-Null
+        [System.Windows.Forms.MessageBox]::Show("Failed to load presets.json. Restoring default presets.`n$_", 'PowerControl', 'OK', 'Warning') | Out-Null
         $defaults = Get-DefaultPresets
         Save-Presets $defaults
         return $defaults
@@ -98,12 +98,12 @@ function Save-State($obj) {
     ($obj | ConvertTo-Json -Depth 3) | Set-Content -LiteralPath $Script:StatePath -Encoding UTF8
 }
 
-# ----- powercfg ロジック -----
+# ----- powercfg logic -----
 function Get-ActiveSchemeGuid {
     $out = & powercfg.exe /getactivescheme 2>&1
     $match = [regex]::Match([string]::Join("`n", $out), '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})')
     if ($match.Success) { return $match.Groups[1].Value }
-    throw 'アクティブな電源プランの GUID を取得できませんでした。'
+    throw 'Could not get the GUID of the active power plan.'
 }
 
 function Apply-Preset($preset) {
@@ -124,7 +124,7 @@ function Apply-Preset($preset) {
     Save-State $state
 }
 
-# ----- タスクスケジューラ登録 -----
+# ----- Task Scheduler registration -----
 function Test-AutoStart {
     try {
         $t = Get-ScheduledTask -TaskName $Script:TaskName -ErrorAction Stop
@@ -145,11 +145,11 @@ function Disable-AutoStart {
     Unregister-ScheduledTask -TaskName $Script:TaskName -Confirm:$false -ErrorAction SilentlyContinue
 }
 
-# ----- WPF 設定ウィンドウ -----
+# ----- WPF settings window -----
 $Script:SettingsXaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="PowerControl 設定" Width="720" Height="560" WindowStartupLocation="CenterScreen">
+        Title="PowerControl Settings" Width="720" Height="560" WindowStartupLocation="CenterScreen">
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -161,22 +161,22 @@ $Script:SettingsXaml = @'
         </Grid.ColumnDefinitions>
 
         <DockPanel Grid.Column="0" Margin="0,0,8,0">
-            <TextBlock DockPanel.Dock="Top" Text="プリセット" FontWeight="Bold" Margin="0,0,0,6"/>
+            <TextBlock DockPanel.Dock="Top" Text="Presets" FontWeight="Bold" Margin="0,0,0,6"/>
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
-                <Button x:Name="BtnAdd"    Content="追加"    Width="60" Margin="0,0,4,0"/>
-                <Button x:Name="BtnRename" Content="名前変更" Width="68" Margin="0,0,4,0"/>
-                <Button x:Name="BtnDelete" Content="削除"    Width="60"/>
+                <Button x:Name="BtnAdd"    Content="Add"    Width="60" Margin="0,0,4,0"/>
+                <Button x:Name="BtnRename" Content="Rename" Width="68" Margin="0,0,4,0"/>
+                <Button x:Name="BtnDelete" Content="Delete" Width="60"/>
             </StackPanel>
             <ListBox x:Name="LstPresets"/>
         </DockPanel>
 
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="PnlEditor">
-                <TextBlock Text="説明" FontWeight="Bold" Margin="0,0,0,4"/>
+                <TextBlock Text="Description" FontWeight="Bold" Margin="0,0,0,4"/>
                 <TextBox x:Name="TxtDescription" Margin="0,0,0,12"/>
 
                 <Border BorderBrush="Gray" BorderThickness="0,0,0,1" Margin="0,0,0,8" Padding="0,0,0,4">
-                    <TextBlock Text="電源に接続" FontWeight="Bold"/>
+                    <TextBlock Text="Plugged in" FontWeight="Bold"/>
                 </Border>
                 <Grid Margin="0,0,0,12">
                     <Grid.RowDefinitions>
@@ -185,16 +185,16 @@ $Script:SettingsXaml = @'
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/><ColumnDefinition Width="180"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="電源ボタンを押すと、PC が"  VerticalAlignment="Center" Margin="0,4"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="When I press the power button"  VerticalAlignment="Center" Margin="0,4"/>
                     <ComboBox Grid.Row="0" Grid.Column="1" x:Name="CbPowerAc" Margin="0,4"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="スリープ ボタンを押すと、PC が" VerticalAlignment="Center" Margin="0,4"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="When I press the sleep button" VerticalAlignment="Center" Margin="0,4"/>
                     <ComboBox Grid.Row="1" Grid.Column="1" x:Name="CbSleepAc" Margin="0,4"/>
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="カバーを閉じると、PC が" VerticalAlignment="Center" Margin="0,4"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="When I close the lid" VerticalAlignment="Center" Margin="0,4"/>
                     <ComboBox Grid.Row="2" Grid.Column="1" x:Name="CbLidAc"   Margin="0,4"/>
                 </Grid>
 
                 <Border BorderBrush="Gray" BorderThickness="0,0,0,1" Margin="0,0,0,8" Padding="0,0,0,4">
-                    <TextBlock Text="バッテリー駆動" FontWeight="Bold"/>
+                    <TextBlock Text="On battery" FontWeight="Bold"/>
                 </Border>
                 <Grid>
                     <Grid.RowDefinitions>
@@ -203,20 +203,20 @@ $Script:SettingsXaml = @'
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/><ColumnDefinition Width="180"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="電源ボタンを押すと、PC が"  VerticalAlignment="Center" Margin="0,4"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="When I press the power button"  VerticalAlignment="Center" Margin="0,4"/>
                     <ComboBox Grid.Row="0" Grid.Column="1" x:Name="CbPowerDc" Margin="0,4"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="スリープ ボタンを押すと、PC が" VerticalAlignment="Center" Margin="0,4"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="When I press the sleep button" VerticalAlignment="Center" Margin="0,4"/>
                     <ComboBox Grid.Row="1" Grid.Column="1" x:Name="CbSleepDc" Margin="0,4"/>
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="カバーを閉じると、PC が" VerticalAlignment="Center" Margin="0,4"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="When I close the lid" VerticalAlignment="Center" Margin="0,4"/>
                     <ComboBox Grid.Row="2" Grid.Column="1" x:Name="CbLidDc"   Margin="0,4"/>
                 </Grid>
             </StackPanel>
         </ScrollViewer>
 
         <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button x:Name="BtnSaveApply" Content="保存して適用" Width="120" Margin="0,0,8,0"/>
-            <Button x:Name="BtnSave"      Content="保存"        Width="80"  Margin="0,0,8,0"/>
-            <Button x:Name="BtnCancel"    Content="キャンセル"  Width="80"/>
+            <Button x:Name="BtnSaveApply" Content="Save and Apply" Width="120" Margin="0,0,8,0"/>
+            <Button x:Name="BtnSave"      Content="Save"           Width="80"  Margin="0,0,8,0"/>
+            <Button x:Name="BtnCancel"    Content="Cancel"         Width="80"/>
         </StackPanel>
     </Grid>
 </Window>
@@ -237,7 +237,7 @@ function Show-SettingsWindow {
         $cb.ItemsSource = 0..3 | ForEach-Object { $Script:ACTION_NAMES[$_] }
     }
 
-    # ローカル可変コピーを作る
+    # Create a local mutable copy
     $data = Load-Presets
     $list = New-Object System.Collections.ArrayList
     foreach ($p in $data.presets) { [void]$list.Add($p) }
@@ -281,7 +281,7 @@ function Show-SettingsWindow {
     }
 
     $ctl.BtnAdd.Add_Click({
-        $name = [Microsoft.VisualBasic.Interaction]::InputBox('プリセット名を入力してください', '追加', '新しいプリセット')
+        $name = [Microsoft.VisualBasic.Interaction]::InputBox('Enter a preset name', 'Add', 'New Preset')
         if ([string]::IsNullOrWhiteSpace($name)) { return }
         $new = [PSCustomObject]@{
             name = $name; description = ''
@@ -295,7 +295,7 @@ function Show-SettingsWindow {
     })
     $ctl.BtnRename.Add_Click({
         $p = $ctl.LstPresets.SelectedItem; if ($null -eq $p) { return }
-        $name = [Microsoft.VisualBasic.Interaction]::InputBox('新しい名前', '名前変更', $p.name)
+        $name = [Microsoft.VisualBasic.Interaction]::InputBox('New name', 'Rename', $p.name)
         if ([string]::IsNullOrWhiteSpace($name)) { return }
         $p.name = $name
         $ctl.LstPresets.Items.Refresh()
@@ -303,10 +303,10 @@ function Show-SettingsWindow {
     $ctl.BtnDelete.Add_Click({
         $p = $ctl.LstPresets.SelectedItem; if ($null -eq $p) { return }
         if ($list.Count -le 1) {
-            [System.Windows.MessageBox]::Show('最低 1 つのプリセットが必要です。', 'PowerControl') | Out-Null
+            [System.Windows.MessageBox]::Show('At least one preset is required.', 'PowerControl') | Out-Null
             return
         }
-        $r = [System.Windows.MessageBox]::Show("プリセット「$($p.name)」を削除しますか？", '確認', 'YesNo', 'Question')
+        $r = [System.Windows.MessageBox]::Show("Delete preset '$($p.name)'?", 'Confirm', 'YesNo', 'Question')
         if ($r -ne 'Yes') { return }
         $list.Remove($p)
         $ctl.LstPresets.Items.Refresh()
@@ -346,7 +346,7 @@ function Show-SettingsWindow {
     }
 }
 
-# ----- トレイ UI -----
+# ----- Tray UI -----
 [System.Windows.Forms.Application]::EnableVisualStyles()
 [System.Windows.Forms.Application]::SetCompatibleTextRenderingDefault($false)
 
@@ -369,7 +369,7 @@ function Build-TrayMenu {
     $current = $state.lastPreset
 
     $header = New-Object System.Windows.Forms.ToolStripMenuItem
-    $header.Text = if ($current) { "現在: $current" } else { '現在: (未適用)' }
+    $header.Text = if ($current) { "Current: $current" } else { 'Current: (none)' }
     $header.Enabled = $false
     [void]$menu.Items.Add($header)
     [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
@@ -383,10 +383,10 @@ function Build-TrayMenu {
         $mi.Add_Click({
             try {
                 Apply-Preset $presetRef
-                Show-BalloonTip 'PowerControl' "プリセット「$($presetRef.name)」を適用しました。"
+                Show-BalloonTip 'PowerControl' "Applied preset '$($presetRef.name)'."
                 Refresh-TrayMenu
             } catch {
-                [System.Windows.Forms.MessageBox]::Show("適用に失敗しました:`n$_", 'PowerControl', 'OK', 'Error') | Out-Null
+                [System.Windows.Forms.MessageBox]::Show("Failed to apply preset:`n$_", 'PowerControl', 'OK', 'Error') | Out-Null
             }
         }.GetNewClosure())
         [void]$menu.Items.Add($mi)
@@ -395,15 +395,15 @@ function Build-TrayMenu {
     [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 
     $miSettings = New-Object System.Windows.Forms.ToolStripMenuItem
-    $miSettings.Text = 'プリセット設定...'
+    $miSettings.Text = 'Preset settings...'
     $miSettings.Add_Click({
         $r = Show-SettingsWindow
         if ($r.Result -eq 'saveApply' -and $r.ApplyPreset) {
             try {
                 Apply-Preset $r.ApplyPreset
-                Show-BalloonTip 'PowerControl' "プリセット「$($r.ApplyPreset.name)」を適用しました。"
+                Show-BalloonTip 'PowerControl' "Applied preset '$($r.ApplyPreset.name)'."
             } catch {
-                [System.Windows.Forms.MessageBox]::Show("適用に失敗しました:`n$_", 'PowerControl', 'OK', 'Error') | Out-Null
+                [System.Windows.Forms.MessageBox]::Show("Failed to apply preset:`n$_", 'PowerControl', 'OK', 'Error') | Out-Null
             }
         }
         Refresh-TrayMenu
@@ -411,7 +411,7 @@ function Build-TrayMenu {
     [void]$menu.Items.Add($miSettings)
 
     $miAuto = New-Object System.Windows.Forms.ToolStripMenuItem
-    $miAuto.Text = 'スタートアップに登録'
+    $miAuto.Text = 'Register for startup'
     $miAuto.Checked = Test-AutoStart
     $miAuto.Add_Click({
         try {
@@ -419,7 +419,7 @@ function Build-TrayMenu {
             else { Enable-AutoStart }
             Refresh-TrayMenu
         } catch {
-            [System.Windows.Forms.MessageBox]::Show("スタートアップ設定に失敗しました:`n$_", 'PowerControl', 'OK', 'Error') | Out-Null
+            [System.Windows.Forms.MessageBox]::Show("Failed to update startup setting:`n$_", 'PowerControl', 'OK', 'Error') | Out-Null
         }
     })
     [void]$menu.Items.Add($miAuto)
@@ -427,7 +427,7 @@ function Build-TrayMenu {
     [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 
     $miExit = New-Object System.Windows.Forms.ToolStripMenuItem
-    $miExit.Text = '終了'
+    $miExit.Text = 'Exit'
     $miExit.Add_Click({
         $Script:NotifyIcon.Visible = $false
         $Script:NotifyIcon.Dispose()
@@ -447,7 +447,7 @@ function Refresh-TrayMenu {
 Refresh-TrayMenu
 $Script:NotifyIcon.Visible = $true
 
-# 左クリックでもメニューを開けるようにする (右クリックは ContextMenuStrip の標準動作)
+# Open the menu on left-click too (right-click is handled by ContextMenuStrip)
 $Script:NotifyIcon.Add_MouseUp({
     param($s, $e)
     if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Left) {
@@ -456,8 +456,8 @@ $Script:NotifyIcon.Add_MouseUp({
     }
 })
 
-# 起動完了通知
-Show-BalloonTip 'PowerControl' 'タスクトレイで動作中です（右クリックでメニュー）。'
+# Startup notification
+Show-BalloonTip 'PowerControl' 'Running in the task tray. Right-click for the menu.'
 
-# ----- メッセージループ -----
+# ----- Message loop -----
 [System.Windows.Forms.Application]::Run($Script:AppContext)
