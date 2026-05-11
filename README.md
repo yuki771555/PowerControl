@@ -49,6 +49,19 @@ No more clicking through six separate settings in the Windows Settings app every
 
 On first launch, `presets.json` (preset definitions) and `state.json` (the most recently applied preset) are generated automatically.
 
+### If Windows Blocks the Script
+
+If Windows blocks the app because the files were downloaded from the internet, unblock the files once and launch it again:
+
+```powershell
+cd path\to\PowerControl
+Unblock-File .\PowerControl.ps1
+Unblock-File .\PowerControl.bat
+.\PowerControl.bat
+```
+
+PowerControl uses `RemoteSigned` when launching PowerShell. It does not use `ExecutionPolicy Bypass`.
+
 ### Customizing Presets
 
 Open **"Preset settings..."** from the tray menu to edit presets in the GUI. The layout and choices mirror the Windows Settings app, so it should feel familiar.
@@ -75,7 +88,7 @@ On newer versions of Windows, these items are hidden by default in `powercfg /qu
 
 ```
 PowerControl.ps1     Main script (tray app + WPF preset editor window)
-PowerControl.bat     Launcher batch file (runs the .ps1 with -STA / Hidden)
+PowerControl.bat     Launcher batch file (runs the .ps1 with -NoProfile / -STA / RemoteSigned)
 presets.json         Preset definitions (generated automatically on first launch)
 state.json           Most recently applied preset name (generated automatically)
 ```

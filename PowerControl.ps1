@@ -8,7 +8,7 @@ Task tray app for switching power button, sleep button, and lid close actions
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    $argList = @('-STA', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', "`"$PSCommandPath`"")
+    $argList = @('-NoProfile', '-STA', '-ExecutionPolicy', 'RemoteSigned', '-File', "`"$PSCommandPath`"")
     Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $argList
     exit
 }
