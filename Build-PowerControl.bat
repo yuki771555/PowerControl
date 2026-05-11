@@ -10,5 +10,14 @@ if not exist "%CSC%" (
   exit /b 1
 )
 
+if exist "%~dp0PowerControl.exe" del "%~dp0PowerControl.exe"
 "%CSC%" /nologo /target:winexe /win32manifest:"%~dp0PowerControl.exe.manifest" /out:"%~dp0PowerControl.exe" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll "%~dp0PowerControl.cs"
-exit /b %ERRORLEVEL%
+if errorlevel 1 exit /b %ERRORLEVEL%
+
+findstr /m /c:"requireAdministrator" "%~dp0PowerControl.exe" >nul
+if errorlevel 1 (
+  echo PowerControl.exe was built, but the requireAdministrator manifest marker was not found.
+  exit /b 1
+)
+
+exit /b 0

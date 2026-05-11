@@ -29,6 +29,18 @@ namespace PowerControl
         [STAThread]
         private static void Main()
         {
+            try
+            {
+                MainCore();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("PowerControl failed to start:\n" + ex, "PowerControl", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private static void MainCore()
+        {
             AppDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             PresetsPath = Path.Combine(AppDir, "presets.json");
             StatePath = Path.Combine(AppDir, "state.json");

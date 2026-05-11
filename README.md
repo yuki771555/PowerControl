@@ -53,6 +53,8 @@ No more clicking through six separate settings in the Windows Settings app every
 4. Approve the required UAC prompt, then the tray icon appears
 5. Right-click the icon and choose the preset you want
 
+You can also run `PowerControl.bat`. It rebuilds `PowerControl.exe` first so stale local builds are replaced, then starts the native app.
+
 On first launch, `presets.json` (preset definitions) and `state.json` (the most recently applied preset) are generated automatically.
 
 ### Language
