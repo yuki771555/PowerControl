@@ -8,6 +8,7 @@ using System.Runtime.Serialization.Json;
 using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace PowerControl
@@ -23,6 +24,9 @@ namespace PowerControl
         private static string AppDir;
         private static string PresetsPath;
         private static string StatePath;
+        private static string SystemDir;
+        private static string PowerCfgPath;
+        private static string SchTasksPath;
         private static NotifyIcon NotifyIcon;
         internal static string CurrentLanguage = "en";
 
@@ -44,6 +48,9 @@ namespace PowerControl
             AppDir = AppDomain.CurrentDomain.BaseDirectory;
             PresetsPath = Path.Combine(AppDir, "presets.json");
             StatePath = Path.Combine(AppDir, "state.json");
+            SystemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+            PowerCfgPath = Path.Combine(SystemDir, "powercfg.exe");
+            SchTasksPath = Path.Combine(SystemDir, "schtasks.exe");
             CurrentLanguage = NormalizeLanguage(LoadState().language);
 
             if (!IsAdministrator())
@@ -52,23 +59,34 @@ namespace PowerControl
                 return;
             }
 
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-
-            NotifyIcon = new NotifyIcon
+            bool createdNew;
+            using (Mutex singleInstance = new Mutex(true, "Global\\PowerControl_SingleInstance_2A7C", out createdNew))
             {
-                Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application,
-                Text = "PowerControl",
-                Visible = true
-            };
-            RefreshTrayMenu();
-            NotifyIcon.MouseUp += NotifyIconMouseUp;
-            ShowBalloonTip("PowerControl", L.T("StartupBalloon"));
+                if (!createdNew)
+                {
+                    return;
+                }
 
-            Application.Run(new ApplicationContext());
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
 
-            NotifyIcon.Visible = false;
-            NotifyIcon.Dispose();
+                NotifyIcon = new NotifyIcon
+                {
+                    Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application,
+                    Text = "PowerControl",
+                    Visible = true
+                };
+                RefreshTrayMenu();
+                NotifyIcon.MouseUp += NotifyIconMouseUp;
+                ShowBalloonTip("PowerControl", L.T("StartupBalloon"));
+
+                Application.Run(new ApplicationContext());
+
+                NotifyIcon.Visible = false;
+                NotifyIcon.Dispose();
+
+                GC.KeepAlive(singleInstance);
+            }
         }
 
         private static bool IsAdministrator()
@@ -296,7 +314,23 @@ namespace PowerControl
             {
                 serializer.WriteObject(stream, value);
                 string json = Encoding.UTF8.GetString(stream.ToArray());
-                File.WriteAllText(path, PrettyJson(json), Encoding.UTF8);
+                WriteAllTextAtomic(path, PrettyJson(json));
+            }
+        }
+
+        private static void WriteAllTextAtomic(string path, string contents)
+        {
+            string directory = Path.GetDirectoryName(path);
+            string tempPath = Path.Combine(directory ?? string.Empty, Path.GetFileName(path) + ".tmp");
+            UTF8Encoding utf8NoBom = new UTF8Encoding(false);
+            File.WriteAllText(tempPath, contents, utf8NoBom);
+            if (File.Exists(path))
+            {
+                File.Replace(tempPath, path, null);
+            }
+            else
+            {
+                File.Move(tempPath, path);
             }
         }
 
@@ -309,7 +343,7 @@ namespace PowerControl
             for (int i = 0; i < json.Length; i++)
             {
                 char c = json[i];
-                if (c == '"' && (i == 0 || json[i - 1] != '\\'))
+                if (c == '"' && !IsEscaped(json, i))
                 {
                     inString = !inString;
                 }
@@ -344,9 +378,19 @@ namespace PowerControl
             return output.ToString();
         }
 
+        private static bool IsEscaped(string json, int index)
+        {
+            int backslashes = 0;
+            for (int i = index - 1; i >= 0 && json[i] == '\\'; i--)
+            {
+                backslashes++;
+            }
+            return (backslashes % 2) == 1;
+        }
+
         private static string GetActiveSchemeGuid()
         {
-            string output = RunProcess("powercfg.exe", "/getactivescheme", true);
+            string output = RunProcess(PowerCfgPath, "/getactivescheme", true);
             Match match = Regex.Match(output, "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
             if (match.Success)
             {
@@ -363,9 +407,10 @@ namespace PowerControl
             SetPowerValue(scheme, GuidPower, preset.power.ac, preset.power.dc);
             SetPowerValue(scheme, GuidSleep, preset.sleep.ac, preset.sleep.dc);
             SetPowerValue(scheme, GuidLid, preset.lid.ac, preset.lid.dc);
-            RunProcess("powercfg.exe", "/setactive " + scheme, false);
+            RunProcess(PowerCfgPath, "/setactive " + scheme, false);
             State state = LoadState();
             state.lastPreset = preset.name;
+            state.lastPresetKey = GetPresetKey(preset);
             state.language = CurrentLanguage;
             SaveState(state);
         }
@@ -390,25 +435,25 @@ namespace PowerControl
 
         private static void SetPowerValue(string scheme, string guid, int ac, int dc)
         {
-            RunProcess("powercfg.exe", "/setacvalueindex " + scheme + " " + SubButtons + " " + guid + " " + ac, false);
-            RunProcess("powercfg.exe", "/setdcvalueindex " + scheme + " " + SubButtons + " " + guid + " " + dc, false);
+            RunProcess(PowerCfgPath, "/setacvalueindex " + scheme + " " + SubButtons + " " + guid + " " + ac, false);
+            RunProcess(PowerCfgPath, "/setdcvalueindex " + scheme + " " + SubButtons + " " + guid + " " + dc, false);
         }
 
         private static bool TestAutoStart()
         {
-            return RunProcessExitCode("schtasks.exe", "/Query /TN \"" + TaskName + "\"") == 0;
+            return RunProcessExitCode(SchTasksPath, "/Query /TN \"" + TaskName + "\"") == 0;
         }
 
         private static void EnableAutoStart()
         {
             string exePath = Application.ExecutablePath;
             string args = "/Create /TN \"" + TaskName + "\" /SC ONLOGON /TR \"\\\"" + exePath + "\\\"\" /RL HIGHEST /F";
-            RunProcess("schtasks.exe", args, true);
+            RunProcess(SchTasksPath, args, true);
         }
 
         private static void DisableAutoStart()
         {
-            RunProcess("schtasks.exe", "/Delete /TN \"" + TaskName + "\" /F", true);
+            RunProcess(SchTasksPath, "/Delete /TN \"" + TaskName + "\" /F", true);
         }
 
         private static string RunProcess(string fileName, string arguments, bool captureOutput)
@@ -425,14 +470,32 @@ namespace PowerControl
 
             using (Process process = Process.Start(startInfo))
             {
-                string output = captureOutput ? process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd() : string.Empty;
+                StringBuilder buffer = new StringBuilder();
+                if (captureOutput)
+                {
+                    object syncRoot = new object();
+                    DataReceivedEventHandler handler = delegate(object sender, DataReceivedEventArgs e)
+                    {
+                        if (e.Data != null)
+                        {
+                            lock (syncRoot)
+                            {
+                                buffer.AppendLine(e.Data);
+                            }
+                        }
+                    };
+                    process.OutputDataReceived += handler;
+                    process.ErrorDataReceived += handler;
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                }
                 process.WaitForExit();
                 if (process.ExitCode != 0)
                 {
-                    throw new InvalidOperationException(string.Format(L.T("ProcessFailed"), fileName, process.ExitCode) + "\n" + output);
+                    throw new InvalidOperationException(string.Format(L.T("ProcessFailed"), fileName, process.ExitCode) + "\n" + buffer);
                 }
 
-                return output;
+                return buffer.ToString();
             }
         }
 
@@ -471,7 +534,8 @@ namespace PowerControl
             PresetConfig data = LoadPresets();
             State state = LoadState();
 
-            ToolStripMenuItem header = new ToolStripMenuItem(state.lastPreset == null ? L.T("CurrentNone") : L.T("CurrentPrefix") + PresetDisplayName(new Preset { name = state.lastPreset }))
+            string headerName = ResolveLastPresetDisplayName(data, state);
+            ToolStripMenuItem header = new ToolStripMenuItem(headerName == null ? L.T("CurrentNone") : L.T("CurrentPrefix") + headerName)
             {
                 Enabled = false
             };
@@ -483,7 +547,7 @@ namespace PowerControl
                 Preset presetRef = preset;
                 ToolStripMenuItem item = new ToolStripMenuItem(PresetDisplayName(preset))
                 {
-                    Checked = preset.name == state.lastPreset,
+                    Checked = IsCurrentPreset(preset, state),
                     ToolTipText = PresetDisplayDescription(preset)
                 };
                 item.Click += delegate
@@ -583,14 +647,57 @@ namespace PowerControl
 
         private static void NotifyIconMouseUp(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
+            if (e.Button == MouseButtons.Left && NotifyIcon.ContextMenuStrip != null)
             {
-                System.Reflection.MethodInfo method = typeof(NotifyIcon).GetMethod("ShowContextMenu", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                if (method != null)
+                NotifyIcon.ContextMenuStrip.Show(Cursor.Position);
+            }
+        }
+
+        private static bool IsCurrentPreset(Preset preset, State state)
+        {
+            if (state == null)
+            {
+                return false;
+            }
+            if (!string.IsNullOrEmpty(state.lastPresetKey))
+            {
+                string key = GetPresetKey(preset);
+                if (key != null && key == state.lastPresetKey)
                 {
-                    method.Invoke(NotifyIcon, null);
+                    return true;
                 }
             }
+            return preset.name == state.lastPreset;
+        }
+
+        private static string ResolveLastPresetDisplayName(PresetConfig data, State state)
+        {
+            if (state == null || (state.lastPreset == null && string.IsNullOrEmpty(state.lastPresetKey)))
+            {
+                return null;
+            }
+            if (!string.IsNullOrEmpty(state.lastPresetKey))
+            {
+                foreach (Preset p in data.presets)
+                {
+                    if (GetPresetKey(p) == state.lastPresetKey)
+                    {
+                        return PresetDisplayName(p);
+                    }
+                }
+            }
+            if (state.lastPreset != null)
+            {
+                foreach (Preset p in data.presets)
+                {
+                    if (p.name == state.lastPreset)
+                    {
+                        return PresetDisplayName(p);
+                    }
+                }
+                return PresetDisplayName(new Preset { name = state.lastPreset });
+            }
+            return null;
         }
 
         private static void SetLanguage(string language)
@@ -883,11 +990,11 @@ namespace PowerControl
         public static string Show(string text, string caption, string defaultValue)
         {
             using (Form form = new Form())
-            using (Label label = new Label())
-            using (TextBox input = new TextBox())
-            using (Button ok = new Button())
-            using (Button cancel = new Button())
             {
+                Label label = new Label();
+                TextBox input = new TextBox();
+                Button ok = new Button();
+                Button cancel = new Button();
                 form.Text = caption;
                 form.StartPosition = FormStartPosition.CenterParent;
                 form.Width = 420;
@@ -990,7 +1097,8 @@ namespace PowerControl
             string[] values;
             if (!Text.TryGetValue(key, out values))
             {
-                return key;
+                Debug.Fail("Missing translation key: " + key);
+                return "[??? " + key + "]";
             }
 
             return Program.CurrentLanguage == "ja" ? values[1] : values[0];
@@ -1063,6 +1171,9 @@ namespace PowerControl
     {
         [DataMember(EmitDefaultValue = false)]
         public string lastPreset { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string lastPresetKey { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public string language { get; set; }

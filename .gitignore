@@ -9,6 +9,10 @@ state.json
 *.pvk
 *.spc
 
+# Build artifacts (distributed via GitHub Releases instead)
+PowerControl.exe
+PowerControl.ico
+
 # Windows / editors
 Thumbs.db
 Desktop.ini
