@@ -1,5 +1,6 @@
 # Per-user runtime data
 presets.json
+presets.json.*.bak
 state.json
 *.pfx
 *.p12
