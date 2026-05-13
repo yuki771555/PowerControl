@@ -45,7 +45,7 @@ namespace PowerControl
 
         private static void MainCore()
         {
-            AppDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            AppDir = AppDomain.CurrentDomain.BaseDirectory;
             PresetsPath = Path.Combine(AppDir, "presets.json");
             StatePath = Path.Combine(AppDir, "state.json");
             SystemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
@@ -150,7 +150,10 @@ namespace PowerControl
             {
                 MessageBox.Show(L.T("FailedLoadPresets") + "\n" + ex.Message, "PowerControl", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 PresetConfig defaults = GetDefaultPresets();
-                SaveJson(PresetsPath, defaults);
+                if (MoveFileAside(PresetsPath))
+                {
+                    SaveJson(PresetsPath, defaults);
+                }
                 return defaults;
             }
         }
@@ -273,6 +276,34 @@ namespace PowerControl
                 {
                     preset.name = L.T("NewPreset");
                 }
+                ValidatePreset(preset);
+            }
+        }
+
+        private static bool MoveFileAside(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return true;
+            }
+
+            try
+            {
+                string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                string backupPath = path + "." + timestamp + ".bak";
+                int suffix = 1;
+                while (File.Exists(backupPath))
+                {
+                    backupPath = path + "." + timestamp + "." + suffix + ".bak";
+                    suffix++;
+                }
+
+                File.Move(path, backupPath);
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -875,7 +906,12 @@ namespace PowerControl
                 return;
             }
 
-            preset.description = descriptionText.Text;
+            string description = descriptionText.Text;
+            if (!string.Equals(preset.description ?? string.Empty, description, StringComparison.Ordinal))
+            {
+                preset.key = null;
+            }
+            preset.description = description;
             preset.power.ac = Math.Max(0, powerAc.SelectedIndex);
             preset.sleep.ac = Math.Max(0, sleepAc.SelectedIndex);
             preset.lid.ac = Math.Max(0, lidAc.SelectedIndex);
@@ -920,6 +956,7 @@ namespace PowerControl
             }
 
             preset.name = name;
+            preset.key = null;
             LoadPresetsList();
             presetsList.SelectedItem = preset;
         }

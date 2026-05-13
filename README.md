@@ -53,7 +53,7 @@ Each release is built from a specific tagged commit by GitHub Actions, so the bi
 
 ### Building locally
 
-If you would rather build from source, clone the repo and run `PowerControl.bat`. It calls `Build-PowerControl.bat`, which uses the .NET Framework 4.x `csc.exe` to produce `PowerControl.exe` next to the script, and then launches the native app. The UAC prompt comes from the native app's `requireAdministrator` manifest; the batch file does not self-elevate.
+If you would rather build from source, clone the repo and run `PowerControl.bat`. It calls `Build-PowerControl.bat`, which uses the .NET Framework 4.x `csc.exe` to produce `PowerControl.exe` next to the script, and then launches the native app. If the rebuild fails but an existing `PowerControl.exe` is present, the batch file starts that existing executable instead. The UAC prompt comes from the native app's `requireAdministrator` manifest; the batch file does not self-elevate.
 
 On first launch, `presets.json` (preset definitions) and `state.json` (the most recently applied preset) are generated automatically.
 
@@ -70,7 +70,7 @@ If Smart App Control blocks `PowerControl.exe`, the reliable fix is to sign it w
 If that happens, you can rebuild the app locally:
 
 ```cmd
-%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /win32manifest:PowerControl.exe.manifest /out:PowerControl.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll PowerControl.cs
+%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /target:winexe /win32manifest:PowerControl.exe.manifest /win32icon:PowerControl.ico /out:PowerControl.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Runtime.Serialization.dll PowerControl.cs
 PowerControl.exe
 ```
 
@@ -105,8 +105,7 @@ The legacy PowerShell version is still included. If Windows blocks it because th
 ```powershell
 cd path\to\PowerControl
 Unblock-File .\PowerControl.ps1
-Unblock-File .\PowerControl.bat
-.\PowerControl.bat
+powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File .\PowerControl.ps1
 ```
 
 The legacy PowerShell launcher uses `RemoteSigned`. It does not use `ExecutionPolicy Bypass`.

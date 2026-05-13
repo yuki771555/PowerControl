@@ -6,7 +6,10 @@ set "BUILD=%~dp0Build-PowerControl.bat"
 
 if exist "%BUILD%" (
   call "%BUILD%"
-  if errorlevel 1 exit /b %ERRORLEVEL%
+  if errorlevel 1 (
+    if not exist "%APP%" exit /b 1
+    echo Build failed. Starting the existing PowerControl.exe.
+  )
 )
 
 if exist "%APP%" (
